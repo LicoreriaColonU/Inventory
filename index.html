@@ -1,0 +1,505 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+    <title>Sistema de Inventario Completo</title>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; transition: background-color 0.3s, color 0.3s; }
+        :root {
+            --tamano-letra-base: 16px;
+            --color-fondo: #f5f5f5;
+            --color-texto: #333;
+            --color-container: white;
+            --color-borde: #ddd;
+            --color-primario: #1e3c72;
+            --color-secundario: #28a745;
+            --color-info: #17a2b8;
+            --color-advertencia: #ffc107;
+            --color-peligro: #dc3545;
+            --color-deuda: #9c27b0;
+            --color-incidencia: #ff5722;
+            --color-gasto: #20c997;
+        }
+        [data-tema="oscuro"] {
+            --color-fondo: #1a1a1a;
+            --color-texto: #e0e0e0;
+            --color-container: #2d2d2d;
+            --color-borde: #404040;
+            --color-primario: #4a6fa5;
+            --color-secundario: #3d8b4d;
+            --color-info: #2c7a8c;
+            --color-deuda: #ba68c8;
+            --color-incidencia: #ff7043;
+            --color-gasto: #20c997;
+        }
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: var(--color-fondo);
+            color: var(--color-texto);
+            padding: 16px;
+            min-height: 100vh;
+            font-size: var(--tamano-letra-base);
+        }
+        body::before {
+            content: "";
+            position: fixed;
+            top: 0; left: 0; right: 0; bottom: 0;
+            background-image: var(--logo-fondo);
+            background-repeat: repeat;
+            background-size: 200px 200px;
+            opacity: 0.1;
+            pointer-events: none;
+            z-index: -1;
+        }
+        .container {
+            max-width: 600px;
+            margin: 0 auto;
+            background: var(--color-container);
+            border-radius: 20px;
+            padding: 20px;
+            box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+            position: relative;
+            z-index: 1;
+        }
+        h1, h2, h3, h4 { color: var(--color-primario); margin-bottom: 15px; }
+        .tasa-cambio {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            padding: 15px;
+            border-radius: 10px;
+            margin-bottom: 20px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            flex-wrap: wrap;
+        }
+        .btn {
+            padding: 12px 20px;
+            border: none;
+            border-radius: 8px;
+            font-size: var(--tamano-letra-base);
+            font-weight: bold;
+            cursor: pointer;
+            margin: 5px;
+            transition: transform 0.2s;
+        }
+        .btn:hover { transform: scale(0.98); }
+        .btn-primary { background: var(--color-primario); color: white; }
+        .btn-success { background: var(--color-secundario); color: white; }
+        .btn-info { background: var(--color-info); color: white; }
+        .btn-warning { background: var(--color-advertencia); color: #000; }
+        .btn-danger { background: var(--color-peligro); color: white; }
+        .btn-deuda { background: var(--color-deuda); color: white; }
+        .btn-incidencia { background: var(--color-incidencia); color: white; }
+        .btn-gasto { background: var(--color-gasto); color: white; }
+        .nav-bar {
+            display: flex;
+            gap: 10px;
+            margin-bottom: 20px;
+            flex-wrap: wrap;
+        }
+        .nav-btn {
+            flex: 1;
+            padding: 12px;
+            border: 2px solid var(--color-primario);
+            background: var(--color-container);
+            color: var(--color-texto);
+            border-radius: 8px;
+            font-weight: bold;
+            cursor: pointer;
+            min-width: 90px;
+            font-size: 11px;
+        }
+        .nav-btn.active { background: var(--color-primario); color: white; }
+        .seccion { display: none; }
+        .seccion.active { display: block; }
+        .producto-card {
+            background: var(--color-container);
+            border: 1px solid var(--color-borde);
+            border-radius: 10px;
+            padding: 15px;
+            margin-bottom: 10px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            border-left-width: 5px;
+            border-left-style: solid;
+        }
+        .carrito {
+            background: var(--color-hover);
+            border-radius: 10px;
+            padding: 15px;
+            margin-top: 20px;
+        }
+        .carrito-item {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 10px 0;
+            border-bottom: 1px solid var(--color-borde);
+        }
+        .total {
+            font-size: calc(var(--tamano-letra-base) * 1.2);
+            font-weight: bold;
+            margin: 15px 0;
+            text-align: right;
+        }
+        .modal {
+            display: none;
+            position: fixed;
+            top: 0; left: 0; right: 0; bottom: 0;
+            background: rgba(0,0,0,0.8);
+            z-index: 1000;
+            overflow-y: auto;
+            padding: 20px;
+        }
+        .modal-content {
+            background: var(--color-container);
+            max-width: 500px;
+            margin: 50px auto;
+            padding: 30px;
+            border-radius: 20px;
+        }
+        .form-group { margin-bottom: 15px; }
+        .form-group label {
+            display: block;
+            margin-bottom: 5px;
+            font-weight: bold;
+        }
+        .form-group input, .form-group select, .form-group textarea {
+            width: 100%;
+            padding: 12px;
+            border: 2px solid var(--color-borde);
+            border-radius: 8px;
+            background: var(--color-container);
+            color: var(--color-texto);
+            font-size: var(--tamano-letra-base);
+        }
+        .grid-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+        .buscador { margin: 20px 0; }
+        .buscador input {
+            width: 100%;
+            padding: 15px;
+            border: 2px solid var(--color-primario);
+            border-radius: 10px;
+            background: var(--color-container);
+            color: var(--color-texto);
+        }
+        .gasto-card, .deudor-card, .incidencia-card, .donacion-card {
+            background: var(--color-container);
+            border: 2px solid var(--color-deuda);
+            border-radius: 10px;
+            padding: 15px;
+            margin-bottom: 15px;
+        }
+        .gasto-card { border-color: var(--color-gasto); }
+        .incidencia-card { border-color: var(--color-incidencia); }
+        .donacion-card { border-color: var(--color-deuda); }
+        .combo-config-item {
+            background: var(--color-hover);
+            padding: 15px;
+            border-radius: 8px;
+            margin-bottom: 15px;
+        }
+        .combo-item-row {
+            display: flex;
+            gap: 10px;
+            align-items: center;
+            margin-bottom: 5px;
+        }
+        .camara-container {
+            position: fixed;
+            top: 0; left: 0; right: 0; bottom: 0;
+            background: black;
+            z-index: 2000;
+            display: none;
+            flex-direction: column;
+        }
+        .camara-video { flex: 1; width: 100%; object-fit: cover; }
+        .camara-controles {
+            display: flex;
+            gap: 20px;
+            padding: 20px;
+            background: rgba(0,0,0,0.8);
+            justify-content: center;
+        }
+        .sincronizacion-status {
+            background: var(--color-secundario);
+            color: white;
+            padding: 5px 10px;
+            border-radius: 20px;
+            font-size: 12px;
+        }
+        .password-overlay {
+            position: fixed;
+            top: 0; left: 0; right: 0; bottom: 0;
+            background: rgba(0,0,0,0.9);
+            z-index: 2000;
+            display: none;
+            justify-content: center;
+            align-items: center;
+        }
+        .password-box {
+            background: white;
+            padding: 30px;
+            border-radius: 20px;
+            max-width: 400px;
+            width: 90%;
+        }
+    </style>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.5.31/jspdf.plugin.autotable.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/socket.io/4.5.4/socket.io.min.js"></script>
+</head>
+<body>
+    <div class="container">
+        <div class="tasa-cambio">
+            <div>
+                <strong>💰 TASA BCV</strong>
+                <div>1 USD = Bs.</div>
+            </div>
+            <div style="display: flex; gap: 10px; align-items: center;">
+                <span class="sincronizacion-status" id="syncStatus">🟢 Sincronizado</span>
+                <div class="tasa-input">
+                    <input type="number" id="tasaCambio" value="36.50" step="0.01">
+                    <button class="btn btn-success" onclick="actualizarTasa()" style="padding: 8px 15px;">Actualizar</button>
+                </div>
+            </div>
+        </div>
+        <div class="resumen-caja" id="resumenCaja"></div>
+        <div class="nav-bar">
+            <button class="nav-btn active" onclick="mostrarSeccion('inventario')">📋 INVENTARIO</button>
+            <button class="nav-btn" onclick="mostrarSeccion('ventas')">💰 VENTAS</button>
+            <button class="nav-btn" onclick="mostrarSeccion('precios')">💰 LISTA PRECIOS</button>
+            <button class="nav-btn" onclick="mostrarSeccion('menuRapido')">🍔 MENÚ RÁPIDO</button>
+            <button class="nav-btn" onclick="mostrarSeccion('vasos')">🥤 VASOS</button>
+            <button class="nav-btn" onclick="mostrarSeccion('botellas')">🍾 BOTELLAS</button>
+            <button class="nav-btn" onclick="mostrarSeccion('gastos')">💸 GASTOS</button>
+            <button class="nav-btn" onclick="mostrarSeccion('deudores')">📋 DEUDORES</button>
+            <button class="nav-btn" onclick="mostrarSeccion('donaciones')">🎁 DONACIONES</button>
+            <button class="nav-btn" onclick="mostrarSeccion('entes')">👮 ENTES</button>
+            <button class="nav-btn" onclick="mostrarSeccion('perdidas')">📉 PÉRDIDAS</button>
+            <button class="nav-btn" onclick="mostrarSeccion('incidencias')">⚠️ INCIDENCIAS</button>
+            <button class="nav-btn" onclick="mostrarSeccion('avances')">💸 AVANCES</button>
+            <button class="nav-btn" onclick="mostrarSeccion('horarios')">⏰ HORARIOS</button>
+            <button class="nav-btn" onclick="mostrarSeccion('tareas')">✅ TAREAS</button>
+            <button class="nav-btn" onclick="mostrarSeccion('sobreprecio')">⚡ SOBREPRECIO</button>
+            <button class="nav-btn" onclick="mostrarSeccion('turnos')">🔄 TURNOS</button>
+            <button class="nav-btn" onclick="mostrarSeccion('notificaciones')">🔔 NOTIF.</button>
+            <button class="nav-btn" onclick="mostrarSeccion('config')">⚙️ CONFIG</button>
+            <button class="nav-btn" onclick="mostrarSeccion('apariencia')">🎨 APARIENCIA</button>
+            <button class="nav-btn" onclick="mostrarSeccion('bloqueo')">🔒 BLOQUEO</button>
+            <button class="nav-btn" onclick="mostrarSeccion('cierres')">📊 CIERRES</button>
+        </div>
+        <div id="inventario" class="seccion active">
+            <div style="display: flex; justify-content: space-between; margin-bottom: 20px;">
+                <h2>📦 Inventario</h2>
+                <button class="btn btn-primary" onclick="mostrarModalProducto()">➕ Agregar</button>
+            </div>
+            <div class="resumen-inventario" id="resumenInventario"></div>
+            <button class="export-btn" onclick="exportarInventario()">📥 DESCARGAR INVENTARIO (CSV)</button>
+            <div id="inventario-lista" style="margin-top: 20px;"></div>
+        </div>
+        <div id="ventas" class="seccion">
+            <h2>💰 Vender</h2>
+            <div id="sobreprecio-indicador"></div>
+            <div style="margin: 20px 0;"><input type="text" id="buscador" placeholder="🔍 Buscar producto..." onkeyup="buscarProductos()"></div>
+            <div id="productos-venta"></div>
+            <div class="carrito">
+                <h3>🛒 Carrito</h3>
+                <div id="carrito-items"></div>
+                <div class="total">Total USD: $<span id="total-usd">0.00</span><br>Total Bs: Bs <span id="total-bs">0.00</span></div>
+                <div class="pagos-fraccionados"><h4>💳 Pago Fraccionado</h4><div id="pagos-fraccionados-container"></div><button class="btn btn-info" onclick="agregarMetodoPagoFraccionado()">➕ Agregar Método</button><div id="resumen-fraccionado" class="pago-fraccion-total"></div></div>
+                <div class="form-group"><label>💵 Vueltos (Bs):</label><input type="number" id="vueltos" value="0"></div>
+                <button class="btn btn-success" onclick="completarVenta()">✅ COMPLETAR VENTA</button>
+            </div>
+        </div>
+        <div id="precios" class="seccion">
+            <h2>💰 Lista de Precios</h2>
+            <div class="buscador"><input type="text" id="buscadorPrecios" placeholder="🔍 Buscar..." onkeyup="filtrarListaPrecios()"></div>
+            <div class="lista-precios-header"><span>Producto</span><span>USD</span><span>Bs</span></div>
+            <div id="lista-precios-container"></div>
+            <button class="export-btn" onclick="exportarListaPrecios()">📥 DESCARGAR (CSV)</button>
+        </div>
+        <div id="menuRapido" class="seccion">
+            <div class="config-avanzada" style="background: linear-gradient(135deg, #ff9800 0%, #f57c00 100%); color: white; padding: 20px; border-radius: 10px;">
+                <h2 style="color: white;">🍔 MENÚ RÁPIDO</h2>
+            </div>
+            <div id="resumenPedidoActual" style="background: var(--color-hover); padding: 15px; border-radius: 10px; margin-bottom: 20px; display: none;">
+                <h3>🛒 Pedido en Curso</h3>
+                <div id="itemsPedidoActual"></div>
+                <div>Total: $<span id="pedidoTotalUSD">0.00</span> | Bs <span id="pedidoTotalBs">0.00</span></div>
+                <div style="display: flex; gap: 10px; margin-top: 15px;"><button class="btn btn-success" onclick="finalizarPedido()">✅ FINALIZAR</button><button class="btn btn-danger" onclick="cancelarPedido()">❌ CANCELAR</button></div>
+            </div>
+            <div class="config-avanzada"><h3>🎯 COMBOS</h3><div class="grid-2"><button class="btn btn-primary" onclick="mostrarBurbujaCombos('combo5')">🍔 Combo 5$</button><button class="btn btn-primary" onclick="mostrarBurbujaCombos('combo6')">🍔 Combo 6$</button><button class="btn btn-primary" onclick="mostrarBurbujaCombos('comboTercio')">🍺 Combo Tercio</button></div></div>
+            <div class="config-avanzada"><h3>🥤 LATAS</h3><div class="grid-2"><button class="btn btn-info" onclick="mostrarBurbujaLatas('individual')">🥤 Individual</button><button class="btn btn-info" onclick="mostrarBurbujaLatas('6pack')">📦 6-Pack</button><button class="btn btn-info" onclick="mostrarBurbujaLatas('caja')">📦 Caja</button></div></div>
+            <div class="config-avanzada"><h3>🚬 CIGARROS</h3><div class="grid-2"><button class="btn btn-warning" onclick="mostrarBurbujaCigarros('individual')">🚬 Individual</button><button class="btn btn-warning" onclick="mostrarBurbujaCigarros('mediaCaja')">📦 Media Caja</button><button class="btn btn-warning" onclick="mostrarBurbujaCigarros('caja')">📦 Caja</button></div></div>
+        </div>
+        <div id="gastos" class="seccion"><h2>💸 Gastos Varios</h2><div class="grid-2"><button class="btn btn-gasto" onclick="mostrarModalGasto('paquete')">📦 Registrar Paquete</button><button class="btn btn-gasto" onclick="mostrarModalGasto('simple')">💰 Gasto Simple</button></div><div class="buscador"><input type="text" id="buscadorGastos" placeholder="🔍 Buscar..." onkeyup="buscarGastos()"></div><div id="gastos-lista"></div></div>
+        <div id="deudores" class="seccion"><h2>📋 Deudores</h2><div class="buscador"><input type="text" id="buscadorDeudores" placeholder="🔍 Buscar por nombre/teléfono..." onkeyup="buscarDeudores()"></div><button class="btn btn-deuda" onclick="mostrarModalDeudor()">➕ Nueva Deuda</button><div id="deudores-lista"></div></div>
+        <div id="donaciones" class="seccion"><h2>🎁 Donaciones</h2><div class="form-group"><label>🔑 Contraseña:</label><input type="password" id="passwordDonacion"></div><div class="form-group"><label>🎁 Donación a:</label><input type="text" id="donacionDestino"></div><div class="form-group"><label>📖 Motivo:</label><textarea id="donacionMotivo" rows="2"></textarea></div><div id="donacion-productos-container"></div><button class="btn btn-info" onclick="agregarProductoDonacion()">➕ Agregar Producto</button><div id="resumenDonacion"></div><button class="btn btn-deuda" onclick="guardarDonacion()">🎁 REGISTRAR DONACIÓN</button><h3>Historial</h3><div id="historialDonaciones"></div></div>
+        <div id="vasos" class="seccion"><div class="vaso-card"><h3>🥤 Vasos</h3><div><div id="vasosStock">0</div><div>Stock</div><div id="vasosEntregadosHoy">0</div><div>Entregados Hoy</div></div></div><div class="grid-2"><button class="btn btn-success" onclick="mostrarModalVaso('vender')">💰 Vender</button><button class="btn btn-warning" onclick="mostrarModalVaso('entregar')">🎁 Entregar</button><button class="btn btn-primary" onclick="mostrarModalVaso('comprar')">📦 Comprar</button><button class="btn btn-info" onclick="mostrarModalVaso('ajustar')">⚙️ Ajustar</button></div><div id="historialVasos"></div></div>
+        <div id="botellas" class="seccion"><div class="botella-card"><h3>🍾 Botellas</h3><div><div id="botellasStock">0</div><div>Stock</div><div id="depositosPendientes">0</div><div>Depósitos</div></div></div><div class="grid-2"><button class="btn btn-success" onclick="mostrarModalBotella('vender')">💰 Vender</button><button class="btn btn-warning" onclick="mostrarModalBotella('comprar')">💵 Comprar</button><button class="btn btn-info" onclick="mostrarModalBotella('devolver')">🔄 Devolver</button><button class="btn btn-primary" onclick="mostrarModalBotella('ajustar')">⚙️ Ajustar</button></div><div id="depositosPendientesLista"></div><div id="historialBotellas"></div></div>
+        <div id="entes" class="seccion"><h2>👮 Pago a Entes</h2><div class="pago-ente-card"><select id="enteSelect"><option value="PNB">PNB</option><option value="Policarabobo">Policarabobo</option><option value="Polinaguanagua">Polinaguanagua</option><option value="GNV">GNV</option></select><input type="number" id="enteMonto" placeholder="Monto"><select id="enteMoneda"><option value="Bs">Bs</option><option value="$">USD</option></select><input type="text" id="enteConcepto" placeholder="Concepto"><button class="btn btn-primary" onclick="registrarPagoEnte()">💰 Registrar</button></div><div id="historialPagosEntes"></div></div>
+        <div id="perdidas" class="seccion"><h2>📉 Pérdidas</h2><div class="perdida-card"><select id="perdidaTipo"><option value="botella">Botella</option><option value="producto">Producto</option><option value="vaso">Vaso</option></select><select id="perdidaProducto"></select><input type="number" id="perdidaCantidad" min="1" value="1"><select id="perdidaMotivo"><option value="rota">Rota</option><option value="congelada">Congelada</option><option value="mala">Mala</option><option value="perdida">Perdida</option></select><textarea id="perdidaDescripcion" rows="2"></textarea><button class="btn btn-danger" onclick="registrarPerdida()">⚠️ Registrar</button></div><div id="historialPerdidas"></div></div>
+        <div id="incidencias" class="seccion"><h2>⚠️ Incidencias</h2><button class="btn btn-incidencia" onclick="mostrarModalIncidencia()">📝 Nueva Incidencia</button><div class="buscador"><input type="text" id="buscadorIncidencias" placeholder="🔍 Buscar..." onkeyup="buscarIncidencias()"></div><div id="incidencias-lista"></div></div>
+        <div id="avances" class="seccion"><h2>💸 Avances</h2><div class="avance-card"><label>% Comisión:</label><input type="number" id="porcentajeAvance" value="5"><label>Monto Bs:</label><input type="number" id="montoAvance"><select id="destinoAvance"><option value="PM">Pago Móvil</option><option value="PV">Punto Venta</option></select><button class="btn btn-warning" onclick="realizarAvance()">💱 Realizar</button></div><div class="avance-card"><label>Contraseña:</label><input type="password" id="passwordRetiro"><label>Monto Bs:</label><input type="number" id="montoRetiro"><label>Motivo:</label><input type="text" id="motivoRetiro"><button class="btn btn-danger" onclick="realizarRetiro()">💵 Retirar</button></div><div id="historialAvances"></div></div>
+        <div id="horarios" class="seccion"><h2>⏰ Horarios</h2><button class="btn btn-primary" onclick="verificarPasswordHorarios()">✏️ Editar</button><button class="btn btn-info" onclick="cargarHorarios()">🔄 Actualizar</button><div id="horarios-container"></div></div>
+        <div id="tareas" class="seccion"><div class="tareas-header"><h3>✅ Tareas</h3></div><button class="btn btn-primary" onclick="verificarPasswordTareas()">✏️ Administrar</button><button class="btn btn-info" onclick="cargarTareas()">🔄 Actualizar</button><div id="tareas-container"></div></div>
+        <div id="sobreprecio" class="seccion"><h2>⚡ Sobreprecio</h2><div><label>Hora:</label><input type="time" id="horaSobreprecio" value="20:00"><label>%:</label><input type="number" id="porcentajeSobreprecio" value="15"><button class="btn btn-success" onclick="guardarConfigSobreprecio()">💾 Guardar</button></div><div id="horaActualDisplay"></div><div id="estadoSobreprecio" style="display:none;">⚡ ACTIVO</div><div id="estadoNormal">✅ NORMAL</div></div>
+        <div id="turnos" class="seccion"><h2>🔄 Entrega Turno</h2><div id="turnoActualInfo"></div><button class="btn btn-primary" onclick="iniciarEntregaTurno()">🔄 Iniciar</button><div id="entregaActiva" style="display:none;"><div class="entrega-card"><div class="conteo-item"><span>🏦 Pago Móvil:</span><span id="valorSistemaPM"></span><input type="number" id="conteoPM" step="0.01" onchange="verificarConteo('PM')"><span id="diferenciaPM"></span></div><div class="conteo-item"><span>💳 Punto Venta:</span><span id="valorSistemaPV"></span><input type="number" id="conteoPV" step="0.01" onchange="verificarConteo('PV')"><span id="diferenciaPV"></span></div><div class="conteo-item"><span>💳 Tarjeta:</span><span id="valorSistemaTC"></span><input type="number" id="conteoTC" step="0.01" onchange="verificarConteo('TC')"><span id="diferenciaTC"></span></div><div class="conteo-item"><span>💶 Bs Efectivo:</span><span id="valorSistemaBs"></span><input type="number" id="conteoBs" step="0.01" onchange="verificarConteo('Bs')"><span id="diferenciaBs"></span></div><div class="conteo-item"><span>💵 $ Efectivo:</span><span id="valorSistemaUSD"></span><input type="number" id="conteoUSD" step="0.01" onchange="verificarConteo('USD')"><span id="diferenciaUSD"></span></div><div id="incidenciasArea" style="display:none;"><textarea id="explicacionIncidencias" rows="3"></textarea></div><div><input type="text" id="nombreSaliente" placeholder="Quién entrega"><input type="text" id="nombreEntrante" placeholder="Quién recibe"></div><button class="btn btn-success" onclick="confirmarEntrega()">✅ Confirmar</button><button class="btn btn-danger" onclick="cancelarEntrega()">❌ Cancelar</button></div></div><div id="historialEntregas"></div></div>
+        <div id="notificaciones" class="seccion"><h2>🔔 Notificaciones</h2><div class="config-avanzada"><label>Contraseña:</label><input type="password" id="passwordNotificacion"><label>Título:</label><input type="text" id="notifTitulo" value="Recordatorio"><label>Mensaje:</label><textarea id="notifMensaje" rows="2"></textarea><div class="grid-2"><input type="date" id="notifFecha"><input type="time" id="notifHora"></div><select id="notifRepetir"><option value="no">No repetir</option><option value="diario">Diario</option><option value="semanal">Semanal</option></select><button class="btn btn-warning" onclick="programarNotificacion()">🔔 Programar</button></div><div id="listaNotificaciones"></div><button class="btn btn-info" onclick="probarNotificacion()">🔔 Probar</button></div>
+        <div id="config" class="seccion"><h2>⚙️ Configuración</h2><div class="config-avanzada"><h3>🎨 Logo</h3><label>Contraseña:</label><input type="password" id="passwordLogo"><label>URL Logo:</label><input type="url" id="logoUrl"><img id="logoPreviewImg" class="logo-preview" style="display:none;"><button class="btn btn-primary" onclick="actualizarLogo()">Actualizar</button></div><div class="config-avanzada"><h3>📦 Stock Bajo</h3><label>Contraseña:</label><input type="password" id="passwordStock"><label>Límite:</label><input type="number" id="limiteStockBajo" value="5"><button class="btn btn-primary" onclick="actualizarLimiteStock()">Guardar</button></div><div class="config-avanzada"><h3>🔄 Sincronización</h3><label>Contraseña:</label><input type="password" id="passwordSync"><label>URL Servidor:</label><input type="url" id="servidorSync"><label>Clave:</label><input type="text" id="claveSync"><button class="btn btn-success" onclick="conectarSincronizacion()">🔌 Conectar</button><button class="btn btn-danger" onclick="desconectarSincronizacion()">⚡ Desconectar</button><div><span id="syncEstado">Desconectado</span> | <span id="dispositivosConectados">0</span></div></div><div class="grid-2"><button class="btn btn-info" onclick="sincronizarTodo()">🔄 Sincronizar</button><button class="btn btn-warning" onclick="verificarSincronizacion()">✓ Verificar</button></div></div>
+        <div id="apariencia" class="seccion"><h2>🎨 Apariencia</h2><div class="config-avanzada"><h3>🌓 Modo</h3><label>Contraseña:</label><input type="password" id="passwordModo"><div class="modo-toggle"><button class="modo-btn" onclick="cambiarModo('claro')">☀️ Claro</button><button class="modo-btn" onclick="cambiarModo('oscuro')">🌙 Oscuro</button></div></div><div class="config-avanzada"><h3>🔤 Tamaño</h3><label>Contraseña:</label><input type="password" id="passwordTamano"><input type="range" id="tamanoLetra" min="12" max="24" value="16" step="1" oninput="previsualizarTamano(this.value)"><span id="tamanoActual">16px</span><button class="btn btn-primary" onclick="guardarTamanoLetra()">Guardar</button></div></div>
+        <div id="bloqueo" class="seccion"><h2>🔒 Bloqueo</h2><div class="panel-bloqueo"><label>Contraseña:</label><input type="password" id="passwordBloqueo"><div class="opcion-bloqueada"><div>🚚 Delivery</div><label class="switch"><input type="checkbox" id="deliveryActivo" onchange="cambiarEstadoDelivery()"><span class="slider"></span></label></div><div class="opcion-bloqueada"><div>⏰ Horarios Especiales</div><label class="switch"><input type="checkbox" id="horariosEspecialesActivo" onchange="cambiarEstadoHorariosEspeciales()"><span class="slider"></span></label></div><button class="btn btn-success" onclick="guardarConfiguracionBloqueo()">Guardar</button></div><div><p>Delivery: <span id="deliveryEstadoTexto">Inactivo</span></p><p>Horarios Especiales: <span id="horariosEspecialesEstadoTexto">Inactivo</span></p></div></div>
+        <div id="cierres" class="seccion"><h2>📊 Cierres</h2><div class="grid-2"><button class="btn btn-info" onclick="generarCierreDiario()">📆 Diario</button><button class="btn btn-info" onclick="generarCierreSemanal()">📅 Semanal</button><button class="btn btn-warning" onclick="generarCierreIncidencias()">⚠️ Incidencias</button></div><div id="reporte"></div></div>
+    </div>
+    <div id="modalProducto" class="modal"><div class="modal-content"><h3>➕ Producto</h3><label>Contraseña:</label><input type="password" id="passwordProducto"><label>Nombre:</label><input type="text" id="prodNombre"><label>Categoría:</label><select id="prodCategoria" onchange="actualizarOpcionesCombo()"><option value="lata">🥤 Lata</option><option value="botella">🍾 Botella</option><option value="licor">🥃 Licor</option><option value="comida">🍔 Comida</option><option value="cigarro">🚬 Cigarro</option><option value="otro">📦 Otro</option></select><label>Precio USD:</label><input type="number" id="prodPrecioUSD" step="0.01"><label>Stock:</label><input type="number" id="prodStock"><div id="combosDisponiblesContainer" style="display:none;"><label>Combos:</label><div id="combosChecklist"></div></div><div><button class="btn btn-success" onclick="guardarProducto()">Guardar</button><button class="btn btn-warning" onclick="cerrarModal('modalProducto')">Cancelar</button></div></div></div>
+    <div id="modalGastoPaquete" class="modal"><div class="modal-content"><h3>📦 Paquete</h3><label>Contraseña:</label><input type="password" id="passwordGastoPaquete"><label>Nombre:</label><input type="text" id="gastoPaqueteNombre"><label>Cantidad:</label><input type="number" id="gastoPaqueteCantidad" min="1" value="3"><label>Precio x unidad:</label><input type="number" id="gastoPaquetePrecioUnitario" step="0.01" value="1.00"><label>Total:</label><input type="number" id="gastoPaqueteTotal" readonly><label>Método:</label><select id="gastoPaqueteMetodo"><option value="PM">Pago Móvil</option><option value="PV">Punto Venta</option><option value="TC">Tarjeta (+4%)</option><option value="$">$ Efectivo</option><option value="Bs">Bs Efectivo</option></select><textarea id="gastoPaqueteNota" rows="2" placeholder="Nota"></textarea><button class="btn btn-gasto" onclick="guardarGastoPaquete()">Guardar</button><button class="btn btn-danger" onclick="cerrarModal('modalGastoPaquete')">Cancelar</button></div></div>
+    <div id="modalGastoSimple" class="modal"><div class="modal-content"><h3>💰 Gasto Simple</h3><label>Contraseña:</label><input type="password" id="passwordGastoSimple"><label>Concepto:</label><input type="text" id="gastoSimpleConcepto"><label>Monto:</label><input type="number" id="gastoSimpleMonto" step="0.01"><label>Método:</label><select id="gastoSimpleMetodo"><option value="PM">Pago Móvil</option><option value="PV">Punto Venta</option><option value="TC">Tarjeta (+4%)</option><option value="$">$ Efectivo</option><option value="Bs">Bs Efectivo</option></select><textarea id="gastoSimpleNota" rows="2"></textarea><button class="btn btn-gasto" onclick="guardarGastoSimple()">Guardar</button><button class="btn btn-danger" onclick="cerrarModal('modalGastoSimple')">Cancelar</button></div></div>
+    <div id="modalConsumirPaquete" class="modal"><div class="modal-content"><h3>📦 Consumir</h3><input type="hidden" id="consumirPaqueteId"><p id="consumirPaqueteNombre"></p><p id="consumirPaqueteDisponible"></p><label>Contraseña:</label><input type="password" id="passwordConsumirPaquete"><button class="btn btn-warning" onclick="consumirUnidadPaquete()">✅ Consumir 1</button><button class="btn btn-danger" onclick="cerrarModal('modalConsumirPaquete')">Cancelar</button></div></div>
+    <div id="modalDeudor" class="modal"><div class="modal-content"><h3>📋 Nueva Deuda</h3><label>Contraseña:</label><input type="password" id="passwordDeudor"><label>Nombre:</label><input type="text" id="deudorNombre"><label>Teléfono:</label><input type="tel" id="deudorTelefono"><label>Foto:</label><button class="btn btn-info" onclick="abrirCamara('deudor')">📷 Tomar Foto</button><img id="deudorFotoPreview" style="max-width:100%; display:none;"><div id="deuda-productos-container"></div><button class="btn btn-info" onclick="agregarProductoDeuda()">➕ Producto</button><button class="btn btn-deuda" onclick="guardarDeuda()">Guardar</button><button class="btn btn-danger" onclick="cerrarModal('modalDeudor')">Cancelar</button></div></div>
+    <div id="modalIncidencia" class="modal"><div class="modal-content"><h3>⚠️ Incidencia</h3><label>Contraseña:</label><input type="password" id="passwordIncidencia"><textarea id="incidenciaDescripcion" rows="3" placeholder="Descripción..."></textarea><button class="btn btn-info" onclick="abrirCamara('incidencia')">📷 Tomar Foto</button><img id="incidenciaFotoPreview" style="max-width:100%; display:none;"><button class="btn btn-incidencia" onclick="guardarIncidencia()">Guardar</button><button class="btn btn-danger" onclick="cerrarModal('modalIncidencia')">Cancelar</button></div></div>
+    <div id="modalBurbujaCombos" class="modal"><div class="modal-content"><h3 id="burbujaComboTitulo">🍔 Combo</h3><input type="hidden" id="burbujaComboTipo"><div id="burbujaComboContenido"></div><button class="btn btn-success" onclick="agregarComboAlPedido()">➕ Agregar</button><button class="btn btn-danger" onclick="cerrarModal('modalBurbujaCombos')">Cerrar</button></div></div>
+    <div id="modalBurbujaLatas" class="modal"><div class="modal-content"><h3>🥤 Latas</h3><input type="hidden" id="burbujaLatasTipo"><div id="burbujaLatasContenido"></div><button class="btn btn-success" onclick="agregarLatasAlPedido()">➕ Agregar</button><button class="btn btn-danger" onclick="cerrarModal('modalBurbujaLatas')">Cerrar</button></div></div>
+    <div id="modalBurbujaCigarros" class="modal"><div class="modal-content"><h3>🚬 Cigarros</h3><input type="hidden" id="burbujaCigarrosTipo"><div id="burbujaCigarrosContenido"></div><button class="btn btn-success" onclick="agregarCigarrosAlPedido()">➕ Agregar</button><button class="btn btn-danger" onclick="cerrarModal('modalBurbujaCigarros')">Cerrar</button></div></div>
+    <div id="modalBurbujaProducto" class="modal"><div class="modal-content"><h3 id="burbujaProductoTitulo">📦 Producto</h3><input type="hidden" id="burbujaProductoId"><div id="burbujaProductoContenido"></div><button class="btn btn-success" onclick="agregarProductoConComboAlPedido()">➕ Agregar</button><button class="btn btn-danger" onclick="cerrarModal('modalBurbujaProducto')">Cerrar</button></div></div>
+    <div id="modalBotella" class="modal"><div class="modal-content"><h3 id="modalBotellaTitulo">🍾 Botella</h3><input type="hidden" id="botellaAccion"><label>Contraseña:</label><input type="password" id="passwordBotella"><label>Cantidad:</label><input type="number" id="botellaCantidad" min="1" value="1"><div id="botellaPrecioGroup"><label>Precio:</label><input type="number" id="botellaPrecioVenta" step="0.01" value="2.00"></div><div id="botellaDepositoGroup"><label>Depósito:</label><input type="number" id="botellaMontoDeposito" step="0.01" value="1.00"></div><div id="botellaMetodoPagoGroup"><label>Método:</label><select id="botellaMetodoPago"><option value="PM">Pago Móvil</option><option value="PV">Punto Venta</option><option value="TC">Tarjeta (+4%)</option><option value="$">$ Efectivo</option><option value="Bs">Bs Efectivo</option></select></div><div id="botellaClienteGroup"><label>Cliente:</label><input type="text" id="botellaCliente"></div><div id="botellaReferenciaGroup"><label>Referencia (obligatorio):</label><input type="text" id="botellaReferencia"></div><div id="botellaNotaGroup"><textarea id="botellaNota" rows="2" placeholder="Nota"></textarea></div><button class="btn btn-success" onclick="procesarBotella()">Procesar</button><button class="btn btn-danger" onclick="cerrarModal('modalBotella')">Cancelar</button></div></div>
+    <div id="modalVaso" class="modal"><div class="modal-content"><h3>🥤 Vaso</h3><input type="hidden" id="vasoAccion"><label>Cantidad:</label><input type="number" id="vasoCantidad" min="1" value="1"><div id="vasoPrecioGroup"><label>Precio:</label><input type="number" id="vasoPrecio" step="0.01" value="1.00"></div><div id="vasoMetodoPagoGroup"><label>Método:</label><select id="vasoMetodoPago"><option value="PM">Pago Móvil</option><option value="PV">Punto Venta</option><option value="TC">Tarjeta (+4%)</option><option value="$">$ Efectivo</option><option value="Bs">Bs Efectivo</option></select></div><div id="vasoMotivoGroup"><textarea id="vasoMotivo" rows="2" placeholder="Motivo"></textarea></div><button class="btn btn-success" onclick="procesarVaso()">Procesar</button><button class="btn btn-danger" onclick="cerrarModal('modalVaso')">Cancelar</button></div></div>
+    <div id="modalCamara" class="camara-container"><video id="camaraVideo" class="camara-video" autoplay playsinline></video><div class="camara-controles"><select id="camaraSelector" onchange="cambiarCamara()"></select><button class="btn btn-success" onclick="tomarFoto()">📸 TOMAR</button><button class="btn btn-danger" onclick="cerrarCamara()">❌ CERRAR</button></div><canvas id="camaraCanvas" style="display:none;"></canvas></div>
+    <div id="passwordOverlay" class="password-overlay"><div class="password-box"><h3>🔒 Acceso Restringido</h3><input type="password" id="passwordOverlayInput"><div><button class="btn btn-primary" onclick="verificarPasswordYAbrirTareas()">Acceder</button><button class="btn btn-danger" onclick="cerrarPasswordOverlay()">Cancelar</button></div></div></div>
+    <script>
+        const CONTRASENA_ADMIN = "admin123";
+        const PORCENTAJE_TARJETA_CREDITO = 4;
+        let db, carrito = [], metodoPagoActual = 'PM', tasaCambio = 36.50, gastos = [], deudores = [], incidencias = [], donaciones = [];
+        let vasos = { stock: 100, entregadosHoy: 0, historial: [] };
+        let botellas = { stock: 50, depositosPendientes: [], historial: [] };
+        let pagosEntes = [], perdidas = [], notificacionesProgramadas = [], entregasTurno = [];
+        let pedidoEnCurso = { items: [], totalUSD: 0, totalBs: 0 };
+        let combosPorCategoria = {
+            lata: [{ nombre: "Individual", cantidad: 1, precioMultiplicador: 1.0 }, { nombre: "6-Pack", cantidad: 6, precioMultiplicador: 0.95 }, { nombre: "Caja (24)", cantidad: 24, precioMultiplicador: 0.90 }],
+            botella: [{ nombre: "Individual", cantidad: 1, precioMultiplicador: 1.0 }, { nombre: "6-Pack", cantidad: 6, precioMultiplicador: 0.95 }, { nombre: "Caja (12)", cantidad: 12, precioMultiplicador: 0.92 }],
+            licor: [{ nombre: "Individual", cantidad: 1, precioMultiplicador: 1.0 }, { nombre: "Combo Ron + Coca 1L", cantidad: 2, precioMultiplicador: 0.85 }, { nombre: "Combo Whisky + Hielo", cantidad: 2, precioMultiplicador: 0.90 }],
+            comida: [{ nombre: "Individual", cantidad: 1, precioMultiplicador: 1.0 }, { nombre: "Combo Familiar", cantidad: 4, precioMultiplicador: 0.85 }, { nombre: "Combo Pareja", cantidad: 2, precioMultiplicador: 0.90 }],
+            cigarro: [{ nombre: "Individual", cantidad: 1, precioMultiplicador: 1.0 }, { nombre: "Media Caja (10)", cantidad: 10, precioMultiplicador: 0.90 }, { nombre: "Caja (20)", cantidad: 20, precioMultiplicador: 0.80 }],
+            otro: [{ nombre: "Individual", cantidad: 1, precioMultiplicador: 1.0 }, { nombre: "Pack x3", cantidad: 3, precioMultiplicador: 0.95 }, { nombre: "Pack x6", cantidad: 6, precioMultiplicador: 0.90 }]
+        };
+        let configSobreprecio = { horaActivacion: "20:00", porcentaje: 15, activo: false };
+        let limiteStockBajo = 5, deliveryActivo = false, horariosEspecialesActivo = false;
+        let socket, sincronizacionActiva = false, claveSincronizacion = '', dispositivosConectados = 0;
+        let modoActual = 'claro', tamanoLetraActual = 16, camaraStream = null, camaraTipo = null, camarasDisponibles = [];
+
+        function obtenerProductos() { return new Promise(resolve => { let p = localStorage.getItem('productos'); if(p) resolve(JSON.parse(p)); else { let ej = [{ id: 1, nombre: 'Coca Cola 1.5L', precioUSD: 2.50, stock: 50, categoria: 'otro' }, { id: 2, nombre: 'Pepsi 1.5L', precioUSD: 2.30, stock: 45, categoria: 'otro' }]; localStorage.setItem('productos', JSON.stringify(ej)); resolve(ej); } }); }
+        function guardarProductos(p) { localStorage.setItem('productos', JSON.stringify(p)); }
+        function mostrarSeccion(id) { document.querySelectorAll('.seccion').forEach(s => s.classList.remove('active')); document.getElementById(id).classList.add('active'); event.target.classList.add('active'); if(id === 'gastos') actualizarListaGastos(); if(id === 'deudores') actualizarListaDeudores(); if(id === 'incidencias') actualizarListaIncidencias(); if(id === 'donaciones') actualizarHistorialDonaciones(); if(id === 'menuRapido') actualizarResumenPedido(); }
+        function mostrarModal(id) { document.getElementById(id).style.display = 'block'; }
+        function cerrarModal(id) { document.getElementById(id).style.display = 'none'; }
+        function actualizarTasa() { let nt = parseFloat(document.getElementById('tasaCambio').value); if(nt>0) { tasaCambio=nt; localStorage.setItem('tasaCambio',tasaCambio); alert('✅ Tasa actualizada'); } }
+        function exportarInventario() { alert('Exportar inventario'); }
+        function exportarListaPrecios() { alert('Exportar lista'); }
+        function filtrarListaPrecios() { }
+        function buscarProductos() { }
+        function agregarMetodoPagoFraccionado() { }
+        function completarVenta() { alert('Venta completada'); }
+        function cargarInventario() { obtenerProductos().then(p => { let l = document.getElementById('inventario-lista'); l.innerHTML = p.map(pr => `<div class="producto-card"><div><h4>${pr.nombre}</h4><div>$${pr.precioUSD} | Bs ${(pr.precioUSD*tasaCambio).toFixed(2)}</div><div>Stock: ${pr.stock}</div></div><div><button onclick="editarProducto(${pr.id})">✏️</button><button onclick="mostrarOpcionSobreprecio(${JSON.stringify(pr).replace(/'/g,"\\'")})">➕</button></div></div>`).join(''); }); }
+        function editarProducto(id) { alert('Editar producto'); }
+        function mostrarOpcionSobreprecio(p) { let modal = document.getElementById('modalBurbujaProducto'); document.getElementById('burbujaProductoId').value = p.id; document.getElementById('burbujaProductoTitulo').innerHTML = `📦 ${p.nombre}`; let contenido = document.getElementById('burbujaProductoContenido'); if(p.combos && p.combos.length>0) { contenido.innerHTML = `<select id="comboSeleccionado" onchange="actualizarPrecioProductoConCombo()">${p.combos.map(c=>`<option value="${c.nombre}" data-cantidad="${c.cantidad}" data-precio="${c.precioFinal}">${c.nombre} (${c.cantidad} und) - $${c.precioFinal}</option>`).join('')}</select><input type="number" id="productoCantidadPaquetes" min="1" value="1" onchange="actualizarPrecioProductoConCombo()"><div>Total: $<span id="productoTotalPrecio">${p.precioUSD}</span></div>`; } else { contenido.innerHTML = `<input type="number" id="productoCantidadSimple" min="1" value="1" onchange="actualizarPrecioProductoSimple()"><div>Total: $<span id="productoTotalPrecioSimple">${p.precioUSD}</span></div>`; } modal.style.display = 'block'; }
+        function agregarProductoConComboAlPedido() { alert('Producto agregado'); cerrarModal('modalBurbujaProducto'); }
+        function actualizarPrecioProductoConCombo() { }
+        function actualizarPrecioProductoSimple() { }
+        function cargarProductosVenta() { obtenerProductos().then(p => { document.getElementById('productos-venta').innerHTML = p.map(pr => `<div class="producto-card"><div><h4>${pr.nombre}</h4><div>$${pr.precioUSD} | Bs ${(pr.precioUSD*tasaCambio).toFixed(2)}</div><div>Stock: ${pr.stock}</div></div><button onclick='mostrarOpcionSobreprecio(${JSON.stringify(pr).replace(/'/g,"\\'")})'>Agregar</button></div>`).join(''); }); }
+        function cargarListaPrecios() { obtenerProductos().then(p => { document.getElementById('lista-precios-container').innerHTML = p.map(pr => `<div class="lista-precios-item"><span>${pr.nombre}</span><span>$${pr.precioUSD}</span><span>Bs ${(pr.precioUSD*tasaCambio).toFixed(2)}</span></div>`).join(''); }); }
+        function mostrarModalProducto() { mostrarModal('modalProducto'); document.getElementById('prodNombre').value = ''; document.getElementById('prodPrecioUSD').value = ''; document.getElementById('prodStock').value = ''; document.getElementById('prodCategoria').value = 'lata'; actualizarOpcionesCombo(); }
+        function actualizarOpcionesCombo() { let cat = document.getElementById('prodCategoria').value; let combos = combosPorCategoria[cat] || []; let container = document.getElementById('combosDisponiblesContainer'); let checklist = document.getElementById('combosChecklist'); if(combos.length>0) { container.style.display = 'block'; checklist.innerHTML = combos.map((c,i)=>`<label><input type="checkbox" value="${i}" data-nombre="${c.nombre}" data-cantidad="${c.cantidad}" data-multiplicador="${c.precioMultiplicador}"> ${c.nombre} (${c.cantidad} und - ${c.precioMultiplicador*100}%)</label>`).join(''); } else container.style.display = 'none'; }
+        function guardarProducto() { let pass = document.getElementById('passwordProducto').value; if(pass !== CONTRASENA_ADMIN) { alert('❌ Contraseña incorrecta'); return; } let nombre = document.getElementById('prodNombre').value; let categoria = document.getElementById('prodCategoria').value; let precio = parseFloat(document.getElementById('prodPrecioUSD').value); let stock = parseInt(document.getElementById('prodStock').value); if(!nombre || !precio || !stock) { alert('Complete todos los campos'); return; } let combosSel = []; document.querySelectorAll('#combosChecklist input:checked').forEach(cb => { let idx = parseInt(cb.value); let orig = combosPorCategoria[categoria][idx]; if(orig) combosSel.push({ nombre: orig.nombre, cantidad: orig.cantidad, precioMultiplicador: orig.precioMultiplicador, precioFinal: precio * orig.cantidad * orig.precioMultiplicador }); }); obtenerProductos().then(p => { let prod = { id: Date.now(), nombre, categoria, precioUSD: precio, stock, combos: combosSel }; p.push(prod); guardarProductos(p); alert('✅ Producto agregado'); cerrarModal('modalProducto'); cargarInventario(); cargarProductosVenta(); cargarListaPrecios(); }); }
+        function cargarGastos() { let g = localStorage.getItem('gastos'); if(g) gastos = JSON.parse(g); actualizarListaGastos(); }
+        function guardarGastos() { localStorage.setItem('gastos', JSON.stringify(gastos)); }
+        function mostrarModalGasto(tipo) { if(tipo === 'paquete') mostrarModal('modalGastoPaquete'); else mostrarModal('modalGastoSimple'); }
+        function guardarGastoPaquete() { let pass = document.getElementById('passwordGastoPaquete').value; if(pass !== CONTRASENA_ADMIN) { alert('❌ Contraseña incorrecta'); return; } let nombre = document.getElementById('gastoPaqueteNombre').value; let cant = parseInt(document.getElementById('gastoPaqueteCantidad').value); let precio = parseFloat(document.getElementById('gastoPaquetePrecioUnitario').value); let total = cant * precio; let metodo = document.getElementById('gastoPaqueteMetodo').value; let gasto = { id: Date.now(), tipo: 'paquete', nombre, cantidadTotal: cant, cantidadRestante: cant, precioUnitario: precio, totalPagado: total, metodo, fechaCompra: new Date(), consumos: [], activo: true }; gastos.push(gasto); guardarGastos(); actualizarListaGastos(); cerrarModal('modalGastoPaquete'); alert(`✅ Compra registrada: ${cant} ${nombre}`); }
+        function guardarGastoSimple() { let pass = document.getElementById('passwordGastoSimple').value; if(pass !== CONTRASENA_ADMIN) { alert('❌ Contraseña incorrecta'); return; } let concepto = document.getElementById('gastoSimpleConcepto').value; let monto = parseFloat(document.getElementById('gastoSimpleMonto').value); let metodo = document.getElementById('gastoSimpleMetodo').value; let gasto = { id: Date.now(), tipo: 'simple', concepto, monto, metodo, fecha: new Date() }; gastos.push(gasto); guardarGastos(); actualizarListaGastos(); cerrarModal('modalGastoSimple'); alert(`✅ Gasto registrado: ${concepto} - $${monto.toFixed(2)}`); }
+        function actualizarListaGastos() { let c = document.getElementById('gastos-lista'); if(!c) return; if(gastos.length===0) { c.innerHTML = '<p>No hay gastos</p>'; return; } c.innerHTML = gastos.map(g => { if(g.tipo === 'paquete') return `<div class="gasto-card"><div>📦 ${g.nombre}</div><div>Compra: ${g.cantidadTotal} und | Quedan: ${g.cantidadRestante}</div><div>Total: $${g.totalPagado}</div><button onclick="mostrarModalConsumirPaquete(${g.id})">Consumir 1</button></div>`; else return `<div class="gasto-card"><div>💰 ${g.concepto}</div><div>$${g.monto}</div></div>`; }).join(''); }
+        function mostrarModalConsumirPaquete(id) { let g = gastos.find(g=>g.id===id); if(!g) return; document.getElementById('consumirPaqueteId').value = id; document.getElementById('consumirPaqueteNombre').innerText = g.nombre; document.getElementById('consumirPaqueteDisponible').innerText = `${g.cantidadRestante} unidades`; mostrarModal('modalConsumirPaquete'); }
+        function consumirUnidadPaquete() { let pass = document.getElementById('passwordConsumirPaquete').value; if(pass !== CONTRASENA_ADMIN) { alert('❌ Contraseña incorrecta'); return; } let id = parseInt(document.getElementById('consumirPaqueteId').value); let g = gastos.find(g=>g.id===id); if(g && g.cantidadRestante>0) { g.cantidadRestante--; g.consumos.push({ fecha: new Date() }); if(g.cantidadRestante===0) g.activo = false; guardarGastos(); actualizarListaGastos(); alert(`✅ Consumido. Quedan ${g.cantidadRestante}`); cerrarModal('modalConsumirPaquete'); } }
+        function buscarGastos() { let txt = document.getElementById('buscadorGastos').value.toLowerCase(); document.querySelectorAll('#gastos-lista .gasto-card').forEach(c => { c.style.display = c.innerText.toLowerCase().includes(txt) ? 'block' : 'none'; }); }
+        function cargarDeudores() { let d = localStorage.getItem('deudores'); if(d) deudores = JSON.parse(d); actualizarListaDeudores(); }
+        function guardarDeudores() { localStorage.setItem('deudores', JSON.stringify(deudores)); }
+        function mostrarModalDeudor() { document.getElementById('deuda-productos-container').innerHTML = ''; agregarProductoDeuda(); mostrarModal('modalDeudor'); }
+        function agregarProductoDeuda() { obtenerProductos().then(p => { let id = Date.now(); let container = document.getElementById('deuda-productos-container'); let div = document.createElement('div'); div.innerHTML = `<select id="deuda-prod-${id}"><option value="">Seleccionar...</option>${p.map(pr=>`<option value="${pr.id}" data-precio="${pr.precioUSD}">${pr.nombre} - $${pr.precioUSD}</option>`).join('')}</select><input type="number" id="deuda-cant-${id}" min="1" value="1"><input type="number" id="deuda-precio-${id}" readonly><span id="deuda-subtotal-${id}">$0.00</span><button onclick="eliminarProductoDeuda(${id})">✕</button>`; div.className = 'pago-fraccion-item'; container.appendChild(div); }); }
+        function eliminarProductoDeuda(id) { document.getElementById(`deuda-producto-${id}`)?.remove(); }
+        function guardarDeuda() { let pass = document.getElementById('passwordDeudor').value; if(pass !== CONTRASENA_ADMIN) { alert('❌ Contraseña incorrecta'); return; } let nombre = document.getElementById('deudorNombre').value; let telefono = document.getElementById('deudorTelefono').value; if(!nombre || !telefono) { alert('Nombre y teléfono obligatorios'); return; } let deuda = { id: Date.now(), nombre, telefono, productos: [], totalUSD: 0, fechaCreacion: new Date(), estado: 'pendiente', pagos: [], saldoPendiente: 0 }; let total = 0; document.querySelectorAll('[id^="deuda-prod-"]').forEach(sel => { let id = sel.id.split('-')[2]; let prodId = sel.value; let cant = parseInt(document.getElementById(`deuda-cant-${id}`).value); let precio = parseFloat(document.getElementById(`deuda-precio-${id}`).value); if(prodId && cant>0) { deuda.productos.push({ productoId: parseInt(prodId), nombre: sel.options[sel.selectedIndex].text.split(' - ')[0], cantidad: cant, precioUSD: precio, subtotal: cant*precio }); total += cant*precio; } }); if(deuda.productos.length===0) { alert('Agregue productos'); return; } deuda.totalUSD = total; deuda.saldoPendiente = total; deudores.push(deuda); guardarDeudores(); actualizarListaDeudores(); cerrarModal('modalDeudor'); alert('✅ Deuda registrada'); }
+        function actualizarListaDeudores() { let c = document.getElementById('deudores-lista'); if(!c) return; if(deudores.length===0) { c.innerHTML = '<p>No hay deudores</p>'; return; } c.innerHTML = deudores.map(d => `<div class="deudor-card"><div><strong>${d.nombre}</strong> 📞 ${d.telefono}</div><div>Total: $${d.totalUSD} | Saldo: $${d.saldoPendiente}</div><div>📅 ${new Date(d.fechaCreacion).toLocaleDateString()}</div></div>`).join(''); }
+        function buscarDeudores() { let txt = document.getElementById('buscadorDeudores').value.toLowerCase(); document.querySelectorAll('#deudores-lista .deudor-card').forEach(c => { c.style.display = c.innerText.toLowerCase().includes(txt) ? 'block' : 'none'; }); }
+        function cargarIncidencias() { let i = localStorage.getItem('incidencias'); if(i) incidencias = JSON.parse(i); actualizarListaIncidencias(); }
+        function guardarIncidencias() { localStorage.setItem('incidencias', JSON.stringify(incidencias)); }
+        function mostrarModalIncidencia() { mostrarModal('modalIncidencia'); }
+        function guardarIncidencia() { let pass = document.getElementById('passwordIncidencia').value; if(pass !== CONTRASENA_ADMIN) { alert('❌ Contraseña incorrecta'); return; } let inc = { id: Date.now(), fecha: new Date(), descripcion: document.getElementById('incidenciaDescripcion').value || 'Sin descripción' }; incidencias.unshift(inc); guardarIncidencias(); actualizarListaIncidencias(); cerrarModal('modalIncidencia'); alert('✅ Incidencia registrada'); if(Notification.permission === 'granted') new Notification('⚠️ Nueva Incidencia', { body: inc.descripcion }); }
+        function actualizarListaIncidencias() { let c = document.getElementById('incidencias-lista'); if(!c) return; if(incidencias.length===0) { c.innerHTML = '<p>No hay incidencias</p>'; return; } c.innerHTML = incidencias.map(i => `<div class="incidencia-card"><div>📅 ${new Date(i.fecha).toLocaleDateString()} ${new Date(i.fecha).toLocaleTimeString()}</div><div>${i.descripcion}</div></div>`).join(''); }
+        function buscarIncidencias() { let txt = document.getElementById('buscadorIncidencias').value.toLowerCase(); document.querySelectorAll('#incidencias-lista .incidencia-card').forEach(c => { c.style.display = c.innerText.toLowerCase().includes(txt) ? 'block' : 'none'; }); }
+        function cargarDonaciones() { let d = localStorage.getItem('donaciones'); if(d) donaciones = JSON.parse(d); actualizarHistorialDonaciones(); }
+        function guardarDonaciones() { localStorage.setItem('donaciones', JSON.stringify(donaciones)); }
+        function agregarProductoDonacion() { obtenerProductos().then(p => { let id = Date.now(); let container = document.getElementById('donacion-productos-container'); let div = document.createElement('div'); div.innerHTML = `<select id="donacion-prod-${id}"><option value="">Seleccionar...</option>${p.map(pr=>`<option value="${pr.id}" data-precio="${pr.precioUSD}">${pr.nombre} - $${pr.precioUSD}</option>`).join('')}</select><input type="number" id="donacion-cant-${id}" min="1" value="1"><span id="donacion-subtotal-${id}">$0.00</span><button onclick="eliminarProductoDonacion(${id})">✕</button>`; div.className = 'pago-fraccion-item'; container.appendChild(div); }); }
+        function eliminarProductoDonacion(id) { document.getElementById(`donacion-producto-${id}`)?.remove(); actualizarResumenDonacion(); }
+        function actualizarResumenDonacion() { let total = 0; document.querySelectorAll('[id^="donacion-producto-"]').forEach(item => { let id = item.id.split('-')[2]; let cant = parseInt(document.getElementById(`donacion-cant-${id}`).value) || 0; let precio = parseFloat(document.getElementById(`donacion-prod-${id}`).options[document.getElementById(`donacion-prod-${id}`).selectedIndex]?.dataset?.precio) || 0; let subtotal = cant*precio; total += subtotal; let subSpan = document.getElementById(`donacion-subtotal-${id}`); if(subSpan) subSpan.innerText = `$${subtotal.toFixed(2)}`; }); let res = document.getElementById('resumenDonacion'); if(res) res.innerHTML = `Total: $${total.toFixed(2)} | Bs ${(total*tasaCambio).toFixed(2)}`; }
+        function guardarDonacion() { let pass = document.getElementById('passwordDonacion').value; if(pass !== CONTRASENA_ADMIN) { alert('❌ Contraseña incorrecta'); return; } let destino = document.getElementById('donacionDestino').value; let motivo = document.getElementById('donacionMotivo').value; if(!destino || !motivo) { alert('Destino y motivo obligatorios'); return; } let productos = []; let total = 0; document.querySelectorAll('[id^="donacion-producto-"]').forEach(item => { let id = item.id.split('-')[2]; let prodId = document.getElementById(`donacion-prod-${id}`).value; let cant = parseInt(document.getElementById(`donacion-cant-${id}`).value) || 0; let precio = parseFloat(document.getElementById(`donacion-prod-${id}`).options[document.getElementById(`donacion-prod-${id}`).selectedIndex]?.dataset?.precio) || 0; if(prodId && cant>0) { productos.push({ productoId: parseInt(prodId), nombre: document.getElementById(`donacion-prod-${id}`).options[document.getElementById(`donacion-prod-${id}`).selectedIndex].text.split(' - ')[0], cantidad: cant, precioUSD: precio, subtotal: cant*precio }); total += cant*precio; } }); if(productos.length===0) { alert('Agregue productos'); return; } let donacion = { id: Date.now(), fecha: new Date(), destino, motivo, productos, totalUSD: total }; donaciones.unshift(donacion); guardarDonaciones(); actualizarHistorialDonaciones(); alert(`✅ Donación registrada: ${destino} - $${total.toFixed(2)}`); }
+        function actualizarHistorialDonaciones() { let c = document.getElementById('historialDonaciones'); if(!c) return; if(donaciones.length===0) { c.innerHTML = '<p>No hay donaciones</p>'; return; } c.innerHTML = donaciones.map(d => `<div class="donacion-card"><div><strong>🎁 ${d.destino}</strong> 📅 ${new Date(d.fecha).toLocaleDateString()}</div><div>📖 ${d.motivo}</div><div>$${d.totalUSD}</div></div>`).join(''); }
+        function mostrarBurbujaCombos(tipo) { let modal = document.getElementById('modalBurbujaCombos'); let titulo = document.getElementById('burbujaComboTitulo'); let contenido = document.getElementById('burbujaComboContenido'); document.getElementById('burbujaComboTipo').value = tipo; if(tipo==='combo5') { titulo.innerText = '🍔 Combo 5$'; contenido.innerHTML = `<div>Hamburguesa Sencilla $3</div><div>Papas Medianas $1.50</div><div>Refresco 12oz $0.50</div><div><strong>Total: $5.00</strong></div><input type="number" id="comboCantidad" min="1" value="1">`; } else if(tipo==='combo6') { titulo.innerText = '🍔 Combo 6$'; contenido.innerHTML = `<div>Hamburguesa Doble $4</div><div>Papas Grandes $2</div><div>Refresco 20oz $1</div><div><strong>Total: $6.00</strong></div><input type="number" id="comboCantidad" min="1" value="1">`; } else { titulo.innerText = '🍺 Combo Tercio'; contenido.innerHTML = `<div>Tercio de Cerveza $2</div><div>Tequeños (6) $3</div><div><strong>Total: $5.00</strong></div><input type="number" id="comboCantidad" min="1" value="1">`; } modal.style.display = 'block'; }
+        function agregarComboAlPedido() { let tipo = document.getElementById('burbujaComboTipo').value; let cant = parseInt(document.getElementById('comboCantidad').value) || 1; let precio = tipo==='combo5'?5:tipo==='combo6'?6:5; pedidoEnCurso.items.push({ id: `combo_${Date.now()}`, nombre: `${tipo==='combo5'?'Combo 5$':tipo==='combo6'?'Combo 6$':'Combo Tercio'} x${cant}`, precioUSD: precio*cant, cantidad: cant }); pedidoEnCurso.totalUSD += precio*cant; pedidoEnCurso.totalBs = pedidoEnCurso.totalUSD * tasaCambio; cerrarModal('modalBurbujaCombos'); actualizarResumenPedido(); alert(`✅ Agregado. Total: $${pedidoEnCurso.totalUSD.toFixed(2)}`); }
+        function mostrarBurbujaLatas(tipo) { let modal = document.getElementById('modalBurbujaLatas'); let contenido = document.getElementById('burbujaLatasContenido'); document.getElementById('burbujaLatasTipo').value = tipo; let precio = tipo==='individual'?1.50:tipo==='6pack'?1.40:1.30; let cantBase = tipo==='individual'?1:tipo==='6pack'?6:24; contenido.innerHTML = `<select id="tipoLata"><option value="verde">Verde</option><option value="azul">Azul</option><option value="negra">Negra</option><option value="caroreñaManzana">Caroreña Manzana</option><option value="caroreñaVerano">Caroreña Verano</option></select><input type="number" id="latasCantidad" min="1" value="${cantBase}"><input type="number" id="latasPrecioUnitario" readonly value="${precio}"><div>Total: $<span id="totalLatas">${precio*cantBase}</span></div>`; modal.style.display = 'block'; }
+        function agregarLatasAlPedido() { let tipo = document.getElementById('burbujaLatasTipo').value; let cant = parseInt(document.getElementById('latasCantidad').value) || 0; let precio = parseFloat(document.getElementById('latasPrecioUnitario').value) || 0; let total = cant*precio; pedidoEnCurso.items.push({ id: `latas_${Date.now()}`, nombre: `Latas (${tipo}) x${cant}`, precioUSD: total, cantidad: cant }); pedidoEnCurso.totalUSD += total; pedidoEnCurso.totalBs = pedidoEnCurso.totalUSD * tasaCambio; cerrarModal('modalBurbujaLatas'); actualizarResumenPedido(); alert(`✅ Latas agregadas. Total: $${pedidoEnCurso.totalUSD.toFixed(2)}`); }
+        function mostrarBurbujaCigarros(tipo) { let modal = document.getElementById('modalBurbujaCigarros'); let contenido = document.getElementById('burbujaCigarrosContenido'); document.getElementById('burbujaCigarrosTipo').value = tipo; let precio = tipo==='individual'?0.50:tipo==='mediaCaja'?0.45:0.40; let cantBase = tipo==='individual'?1:tipo==='mediaCaja'?10:20; contenido.innerHTML = `<select id="tipoCigarro"><option value="marlboro">Marlboro</option><option value="winston">Winston</option><option value="lucky">Lucky</option></select><input type="number" id="cigarrosCantidad" min="1" value="1"><input type="number" id="cigarrosPrecioUnitario" readonly value="${precio}"><div>Total: $<span id="totalCigarros">${precio*cantBase}</span></div>`; modal.style.display = 'block'; }
+        function agregarCigarrosAlPedido() { let tipo = document.getElementById('burbujaCigarrosTipo').value; let cant = parseInt(document.getElementById('cigarrosCantidad').value) || 0; let precio = parseFloat(document.getElementById('cigarrosPrecioUnitario').value) || 0; let total = cant*precio; pedidoEnCurso.items.push({ id: `cigarros_${Date.now()}`, nombre: `Cigarros (${tipo}) x${cant}`, precioUSD: total, cantidad: cant }); pedidoEnCurso.totalUSD += total; pedidoEnCurso.totalBs = pedidoEnCurso.totalUSD * tasaCambio; cerrarModal('modalBurbujaCigarros'); actualizarResumenPedido(); alert(`✅ Cigarros agregados. Total: $${pedidoEnCurso.totalUSD.toFixed(2)}`); }
+        function actualizarResumenPedido() { let div = document.getElementById('resumenPedidoActual'); let itemsDiv = document.getElementById('itemsPedidoActual'); let totalUSDSpan = document.getElementById('pedidoTotalUSD'); let totalBsSpan = document.getElementById('pedidoTotalBs'); if(pedidoEnCurso.items.length>0) { div.style.display = 'block'; itemsDiv.innerHTML = pedidoEnCurso.items.map(i => `<div>${i.nombre} - $${i.precioUSD.toFixed(2)}</div>`).join(''); totalUSDSpan.innerText = pedidoEnCurso.totalUSD.toFixed(2); totalBsSpan.innerText = pedidoEnCurso.totalBs.toFixed(2); } else div.style.display = 'none'; }
+        function finalizarPedido() { if(pedidoEnCurso.items.length===0) { alert('No hay pedido'); return; } pedidoEnCurso.items.forEach(i => { carrito.push({ id: i.id, nombre: i.nombre, precioUSD: i.precioUSD, cantidad: 1 }); }); actualizarCarrito(); pedidoEnCurso = { items: [], totalUSD: 0, totalBs: 0 }; actualizarResumenPedido(); mostrarSeccion('ventas'); alert('✅ Pedido agregado al carrito'); }
+        function cancelarPedido() { if(confirm('Cancelar pedido?')) { pedidoEnCurso = { items: [], totalUSD: 0, totalBs: 0 }; actualizarResumenPedido(); alert('Pedido cancelado'); } }
+        function actualizarCarrito() { }
+        function mostrarModalVaso() { }
+        function procesarVaso() { }
+        function mostrarModalBotella() { }
+        function procesarBotella() { }
+        function registrarPagoEnte() { }
+        function registrarPerdida() { }
+        function realizarAvance() { }
+        function realizarRetiro() { }
+        function verificarPasswordHorarios() { document.getElementById('passwordOverlay').style.display = 'flex'; }
+        function verificarPasswordTareas() { document.getElementById('passwordOverlay').style.display = 'flex'; }
+        function cargarHorarios() { }
+        function cargarTareas() { }
+        function guardarConfigSobreprecio() { }
+        function iniciarRelojSobreprecio() { setInterval(() => { let ahora = new Date(); let hora = ahora.getHours().toString().padStart(2,'0')+':'+ahora.getMinutes().toString().padStart(2,'0'); document.getElementById('horaActualDisplay').innerHTML = `⏰ Hora: ${hora}`; let [hAct, mAct] = configSobreprecio.horaActivacion.split(':').map(Number); let activo = (ahora.getHours()*60+ahora.getMinutes()) >= (hAct*60+mAct); configSobreprecio.activo = activo; document.getElementById('estadoSobreprecio').style.display = activo ? 'block' : 'none'; document.getElementById('estadoNormal').style.display = activo ? 'none' : 'block'; }, 1000); }
+        function programarNotificacion() { }
+        function probarNotificacion() { }
+        function iniciarVerificadorNotificaciones() { }
+        function actualizarListaNotificaciones() { }
+        function conectarSincronizacion() { }
+        function desconectarSincronizacion() { }
+        function sincronizarTodo() { }
+        function verificarSincronizacion() { }
+        function actualizarLogo() { }
+        function actualizarLimiteStock() { }
+        function previsualizarTamano(v) { document.getElementById('tamanoActual').innerText = v+'px'; document.documentElement.style.setProperty('--tamano-letra-base', v+'px'); }
+        function guardarTamanoLetra() { let pass = document.getElementById('passwordTamano').value; if(pass !== CONTRASENA_ADMIN) { alert('❌ Contraseña incorrecta'); return; } let val = document.getElementById('tamanoLetra').value; tamanoLetraActual = parseInt(val); localStorage.setItem('tamanoLetra', tamanoLetraActual); document.documentElement.style.setProperty('--tamano-letra-base', val+'px'); alert('✅ Tamaño guardado'); }
+        function cambiarModo(modo) { let pass = document.getElementById('passwordModo').value; if(pass !== CONTRASENA_ADMIN) { alert('❌ Contraseña incorrecta'); return; } if(modo === 'oscuro') document.body.setAttribute('data-tema', 'oscuro'); else document.body.removeAttribute('data-tema'); localStorage.setItem('modoApariencia', modo); }
+        function cargarConfiguracionApariencia() { let m = localStorage.getItem('modoApariencia'); if(m === 'oscuro') document.body.setAttribute('data-tema', 'oscuro'); let t = localStorage.getItem('tamanoLetra'); if(t) { tamanoLetraActual = parseInt(t); document.getElementById('tamanoLetra').value = t; document.documentElement.style.setProperty('--tamano-letra-base', t+'px'); } }
+        function cargarConfiguracionBloqueo() { let d = localStorage.getItem('deliveryActivo'); if(d) deliveryActivo = d === 'true'; let h = localStorage.getItem('horariosEspecialesActivo'); if(h) horariosEspecialesActivo = h === 'true'; }
+        function guardarConfiguracionBloqueo() { let pass = document.getElementById('passwordBloqueo').value; if(pass !== CONTRASENA_ADMIN) { alert('❌ Contraseña incorrecta'); return; } deliveryActivo = document.getElementById('deliveryActivo').checked; horariosEspecialesActivo = document.getElementById('horariosEspecialesActivo').checked; localStorage.setItem('deliveryActivo', deliveryActivo); localStorage.setItem('horariosEspecialesActivo', horariosEspecialesActivo); alert('✅ Configuración guardada'); }
+        function cambiarEstadoDelivery() { let pass = document.getElementById('passwordBloqueo').value; if(pass !== CONTRASENA_ADMIN) { document.getElementById('deliveryActivo').checked = !document.getElementById('deliveryActivo').checked; alert('❌ Primero ingrese contraseña'); } else deliveryActivo = document.getElementById('deliveryActivo').checked; }
+        function cambiarEstadoHorariosEspeciales() { let pass = document.getElementById('passwordBloqueo').value; if(pass !== CONTRASENA_ADMIN) { document.getElementById('horariosEspecialesActivo').checked = !document.getElementById('horariosEspecialesActivo').checked; alert('❌ Primero ingrese contraseña'); } else horariosEspecialesActivo = document.getElementById('horariosEspecialesActivo').checked; }
+        function iniciarEntregaTurno() { }
+        function verificarConteo() { }
+        function confirmarEntrega() { }
+        function cancelarEntrega() { }
+        function generarCierreDiario() { }
+        function generarCierreSemanal() { }
+        function generarCierreIncidencias() { }
+        function actualizarInfoTurnoActual() { }
+        function abrirCamara(tipo) { try { navigator.mediaDevices.getUserMedia({ video: true }).then(stream => { camaraStream = stream; document.getElementById('camaraVideo').srcObject = stream; document.getElementById('modalCamara').style.display = 'flex'; }).catch(() => alert('No se pudo acceder a la cámara')); } catch(e) { alert('Error de cámara'); } }
+        function cerrarCamara() { if(camaraStream) { camaraStream.getTracks().forEach(t => t.stop()); camaraStream = null; } document.getElementById('modalCamara').style.display = 'none'; }
+        function tomarFoto() { let video = document.getElementById('camaraVideo'); let canvas = document.getElementById('camaraCanvas'); canvas.width = video.videoWidth; canvas.height = video.videoHeight; canvas.getContext('2d').drawImage(video, 0, 0); let foto = canvas.toDataURL('image/jpeg'); alert('📸 Foto tomada'); cerrarCamara(); }
+        function cambiarCamara() { }
+        function verificarPasswordYAbrirTareas() { let pass = document.getElementById('passwordOverlayInput').value; if(pass === CONTRASENA_ADMIN) { document.getElementById('passwordOverlay').style.display = 'none'; alert('✅ Acceso concedido'); } else alert('❌ Contraseña incorrecta'); }
+        function cerrarPasswordOverlay() { document.getElementById('passwordOverlay').style.display = 'none'; }
+        document.addEventListener('DOMContentLoaded', function() { cargarGastos(); cargarDeudores(); cargarIncidencias(); cargarDonaciones(); cargarInventario(); cargarProductosVenta(); cargarListaPrecios(); iniciarRelojSobreprecio(); cargarConfiguracionApariencia(); cargarConfiguracionBloqueo(); if('Notification' in window) Notification.requestPermission(); });
+    </script>
+</body>
+</html>
